@@ -145,45 +145,77 @@ if "погода" in text.lower():
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-user_id = str(update.effective_user.id)
-text = update.message.text
+    user_id = str(update.effective_user.id)
+    text = update.message.text
 
-user = get_user(user_id)
-name = user[1]
-honey = user[2]
-hurt = user[3]
-msg_count = user[4]
-lat = user[6] if len(user) > 6 else None
-lon = user[7] if len(user) > 7 else None
+    user = get_user(user_id)
 
+    # распаковка данных пользователя
+    name = user[1]
+    honey = user[2]
+    hurt = user[3]
+    msg_count = user[4]
+    lat = user[6] if len(user) > 6 else None
+    lon = user[7] if len(user) > 7 else None
+
+    # увеличиваем счётчик сообщений
     msg_count += 1
     update_user(user_id, "msg_count", msg_count)
 
+    text_l = text.lower()
+
+    # имя
     detected_name = detect_name(text)
     if detected_name:
         update_user(user_id, "name", detected_name)
         await update.message.reply_text(f"{detected_name}? Хорошее имя. Я запомню.")
         return
 
+    # грубость
     if detect_rudeness(text):
         hurt = min(hurt + 1, 3)
         update_user(user_id, "hurt_level", hurt)
         await update.message.reply_text("Эй… Я всё-таки плюшевый. Полегче.")
         return
 
-    if "привет" in text.lower():
+    # приветствие
+    if "привет" in text_l:
         if name:
             await update.message.reply_text(f"Привет, {name}. Я здесь.")
         else:
             await update.message.reply_text("Привет. Я Плюш 🧸")
         return
 
-    if "кто ты" in text.lower():
+    # кто ты
+    if "кто ты" in text_l:
         await update.message.reply_text("Я плюшевый медвежонок. Немного цифровой.")
         return
 
-    await update.message.reply_text("Это звучит серьёзно для плюшевого существа.")
+    # погода
+    if "погода" in text_l:
+        if lat is None or lon is None:
+            await update.message.reply_text(
+                "Мне нужна твоя геолокация 🧸",
+                reply_markup=location_keyboard()
+            )
+            return
 
+        data = await fetch_weather(lat, lon)
+        cur = data["current"]
+
+        temp = cur["temperature_2m"]
+        feels = cur["apparent_temperature"]
+        wind = cur["wind_speed_10m"]
+        desc = code_to_text(int(cur["weather_code"]))
+
+        await update.message.reply_text(
+            f"Сейчас {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
+            f"Погода нормальная… если ты не сахар 🍯"
+        )
+        return
+
+    # fallback
+    await update.message.reply_text("Это звучит серьёзно для плюшевого существа.")
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(MessageHandler(filters.LOCATION, handle_location))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
@@ -191,3 +223,4 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 print("Плюш запущен 🧸")
 
 app.run_polling()
+
