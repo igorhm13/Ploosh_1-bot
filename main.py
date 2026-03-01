@@ -145,11 +145,11 @@ if "погода" in text.lower():
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    text = update.message.text
+user_id = str(update.effective_user.id)
+text = update.message.text
 
-    user = get_user(user_id)
-   name = user[1]
+user = get_user(user_id)
+name = user[1]
 honey = user[2]
 hurt = user[3]
 msg_count = user[4]
@@ -189,4 +189,5 @@ app.add_handler(MessageHandler(filters.LOCATION, handle_location))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 print("Плюш запущен 🧸")
+
 app.run_polling()
