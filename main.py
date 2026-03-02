@@ -1,6 +1,7 @@
 import sqlite3
 import datetime
 import os
+from telegram.ext import CommandHandler
 
 import httpx
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
@@ -216,13 +217,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
 
     await update.message.reply_text("Это звучит серьёзно для плюшевого существа.")
+async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Напиши 'погода' или 'погода завтра' 🧸")
 
+async def cmd_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Ок, отправь геолокацию заново 🧸", reply_markup=location_keyboard())
+
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    user = get_user(user_id)
+    name = user[1]
+    honey = user[2]
+    hurt = user[3]
+    lat = user[6] if len(user) > 6 else None
+    lon = user[7] if len(user) > 7 else None
+
+    loc = "есть ✅" if (lat is not None and lon is not None) else "нет ❌"
+    await update.message.reply_text(
+        f"Статус Плюша 🧸\n"
+        f"Имя: {name or 'не знаю'}\n"
+        f"Геолокация: {loc}\n"
+        f"🍯 Уровень мёда: {honey}\n"
+        f"🙃 Обида: {hurt}"
+    )
 
 # ---------- RUN ----------
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(MessageHandler(filters.LOCATION, handle_location))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
+app.add_handler(CommandHandler("weather", cmd_weather))
+app.add_handler(CommandHandler("location", cmd_location))
+app.add_handler(CommandHandler("status", cmd_status))
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
