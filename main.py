@@ -110,7 +110,7 @@ async def fetch_weather(lat: float, lon: float):
         "latitude": lat,
         "longitude": lon,
         "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m",
-        "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+        "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code",
         "timezone": "auto"
     }
     async with httpx.AsyncClient(timeout=15) as client:
@@ -178,26 +178,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if "погода" in text_l or "сколько градусов" in text_l:
-        if lat is None or lon is None:
-            await update.message.reply_text(
-                "Мне нужна твоя геолокация 🧸",
-                reply_markup=location_keyboard()
-            )
-            return
-
-        data = await fetch_weather(lat, lon)
-        cur = data["current"]
-
-        temp = cur["temperature_2m"]
-        feels = cur["apparent_temperature"]
-        wind = cur["wind_speed_10m"]
-        desc = code_to_text(int(cur["weather_code"]))
-
+    if lat is None or lon is None:
         await update.message.reply_text(
-            f"Сейчас {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
-            f"Погода нормальная… если ты не сахар 🍯"
+            "Мне нужна твоя геолокация 🧸",
+            reply_markup=location_keyboard()
         )
         return
+
+    data = await fetch_weather(lat, lon)
+
+    # 👉 ЕСЛИ ЗАВТРА
+    if "завтра" in text_l:
+        d = data["daily"]
+        tmax = d["temperature_2m_max"][1]
+        tmin = d["temperature_2m_min"][1]
+        p = d["precipitation_probability_max"][1]
+        wcode = int(d["weather_code"][1])
+        desc_d = code_to_text(wcode)
+
+        await update.message.reply_text(
+            f"Завтра {desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
+            f"Я бы взял зонт… но я мишка 🧸"
+        )
+        return
+
+    # 👉 ИНАЧЕ — СЕЙЧАС
+    cur = data["current"]
+    temp = cur["temperature_2m"]
+    feels = cur["apparent_temperature"]
+    wind = cur["wind_speed_10m"]
+    desc = code_to_text(int(cur["weather_code"]))
+
+    await update.message.reply_text(
+        f"Сейчас {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
+        f"Погода нормальная… если ты не сахар 🍯"
+    )
+    return
 
     await update.message.reply_text("Это звучит серьёзно для плюшевого существа.")
 
@@ -209,3 +225,4 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
