@@ -5,7 +5,7 @@ from telegram.ext import CommandHandler
 
 import httpx
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
 
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
@@ -36,6 +36,9 @@ def ensure_columns():
         cursor.execute("ALTER TABLE users ADD COLUMN lat REAL")
     if "lon" not in cols:
         cursor.execute("ALTER TABLE users ADD COLUMN lon REAL")
+
+    if "morning_enabled" not in cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN morning_enabled INTEGER DEFAULT 0")
 
     conn.commit()
 
@@ -124,8 +127,43 @@ def location_keyboard():
     kb = [[KeyboardButton("📍 Отправить геолокацию", request_location=True)]]
     return ReplyKeyboardMarkup(kb, resize_keyboard=True, one_time_keyboard=True)
 
-
+def main_menu_keyboard():
+    kb = [
+        ["🌡 Погода сейчас", "📅 Погода завтра"],
+        ["☔ Будет ли дождь?"],
+        ["☀️ Утренние сообщения ВКЛ", "🌙 Утренние сообщения ВЫКЛ"],
+        [KeyboardButton("📍 Отправить геолокацию", request_location=True)],
+        ["ℹ️ Помощь"],
+    ]
+    return ReplyKeyboardMarkup(kb, resize_keyboard=True)
+    
 # ---------- HANDLERS ----------
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "Здравствуйте! 🧸\n\n"
+        "Меня зовут Плюш.\n"
+        "Я умею:\n"
+        "• показать погоду сейчас\n"
+        "• сказать прогноз на завтра\n"
+        "• подсказать, будет ли дождь ☔\n\n"
+        "Меня нужно только спросить — или нажать кнопку ниже.\n"
+        "Пока что других вещей я не умею делать."
+    )
+    await update.message.reply_text(text, reply_markup=main_menu_keyboard())
+
+
+async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "ℹ️ Как спросить Плюша:\n\n"
+        "Напиши или нажми кнопку:\n"
+        "• погода / погода сейчас\n"
+        "• погода завтра\n"
+        "• будет ли дождь / нужен ли зонт\n\n"
+        "Чтобы я ответил точно, мне нужна геолокация.\n"
+        "Нажми «📍 Отправить геолокацию»."
+    )
+    await update.message.reply_text(text, reply_markup=main_menu_keyboard())
+    
 async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     get_user(user_id)
@@ -134,7 +172,10 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lon = update.message.location.longitude
     update_location(user_id, lat, lon)
 
-    await update.message.reply_text("Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде.")
+    await update.message.reply_text(
+        "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде.",
+        reply_markup=main_menu_keyboard()
+        )
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -178,6 +219,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Я плюшевый медвежонок. Немного цифровой.")
         return
 
+    if "помощь" in text_l:
+        await help_cmd(update, context)
+        return
+
+        # кнопки управления утренними сообщениями
+    if "утренние сообщения" in text_l and "вкл" in text_l:
+        await morning_on(update, context)
+        return
+
+    if "утренние сообщения" in text_l and "выкл" in text_l:
+        await morning_off(update, context)
+        return
+        
     if ("погода" in text_l) or ("сколько градусов" in text_l) or ("завтра" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
         if lat is None or lon is None:
             await update.message.reply_text(
@@ -188,7 +242,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         data = await fetch_weather(lat, lon)
 
-                # 👉 БЫСТРЫЙ ОТВЕТ: БУДЕТ ЛИ ДОЖДЬ
+        # 👉 БЫСТРЫЙ ОТВЕТ: БУДЕТ ЛИ ДОЖДЬ
         if ("дожд" in text_l) or ("зонт" in text_l):
             d = data["daily"]
 
@@ -239,7 +293,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    await update.message.reply_text("Это звучит серьёзно для плюшевого существа.")
+        await update.message.reply_text(
+        "Я пока не понял запрос 🧸\n\n"
+        "Попробуй так:\n"
+        "• погода\n"
+        "• погода завтра\n"
+        "• будет ли дождь\n\n"
+        "Или нажми кнопку внизу.",
+        reply_markup=main_menu_keyboard()
+    )
 async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Напиши 'погода' или 'погода завтра' 🧸")
     return
@@ -258,23 +320,111 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lon = user[7] if len(user) > 7 else None
 
     loc = "есть ✅" if (lat is not None and lon is not None) else "нет ❌"
+await update.message.reply_text(
+    f"Статус Плюша 🧸\n"
+    ...
+)
+
+    morning_enabled = user[8] if len(user) > 8 and user[8] is not None else 0
+    morning_text = "включены ☀️" if int(morning_enabled) == 1 else "выключены 🌙"
+
     await update.message.reply_text(
         f"Статус Плюша 🧸\n"
         f"Имя: {name or 'не знаю'}\n"
         f"Геолокация: {loc}\n"
+        f"Утренние сообщения: {morning_text}\n"
         f"🍯 Уровень мёда: {honey}\n"
         f"🙃 Обида: {hurt}"
     )
 
+async def morning_weather(context: ContextTypes.DEFAULT_TYPE):
+    with db_lock:
+    cursor.execute("""
+        SELECT user_id, lat, lon
+        FROM users
+        WHERE lat IS NOT NULL
+          AND lon IS NOT NULL
+          AND morning_enabled = 1
+    """)
+    users = cursor.fetchall()
+
+    for user_id, lat, lon in users:
+        try:
+            data = await fetch_weather(lat, lon, need="daily")
+
+            d = data["daily"]
+            tmax = d["temperature_2m_max"][0]
+            tmin = d["temperature_2m_min"][0]
+            rain = d["precipitation_probability_max"][0]
+            desc = code_to_text(int(d["weather_code"][0]))
+
+            if rain >= 60:
+                rain_text = "☔ вероятен дождь"
+            elif rain >= 30:
+                rain_text = "🌦 возможен дождь"
+            else:
+                rain_text = "🌤 дождя почти не будет"
+
+            msg = (
+                f"Доброе утро 🧸\n\n"
+                f"Сегодня {desc}\n"
+                f"{tmin:.0f}…{tmax:.0f}°C\n"
+                f"{rain_text} ({rain}%)"
+            )
+
+            await context.bot.send_message(chat_id=user_id, text=msg)
+
+        except Exception as e:
+            print("Ошибка утреннего прогноза:", e)
+
+async def morning_on(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+
+    with db_lock:
+        cursor.execute(
+            "UPDATE users SET morning_enabled = 1 WHERE user_id = ?",
+            (user_id,)
+        )
+        conn.commit()
+
+    await update.message.reply_text(
+        "Теперь я буду писать тебе каждое утро 🧸☀️\n"
+        "Если захочешь отключить — напиши /morning_off"
+    )
+
+
+async def morning_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+
+    with db_lock:
+        cursor.execute(
+            "UPDATE users SET morning_enabled = 0 WHERE user_id = ?",
+            (user_id,)
+        )
+        conn.commit()
+
+    await update.message.reply_text(
+        "Хорошо 🧸 Больше не буду писать по утрам."
+    )
+    
 # ---------- RUN ----------
 app = ApplicationBuilder().token(TOKEN).build()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("help", help_cmd))
 app.add_handler(MessageHandler(filters.LOCATION, handle_location))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.add_handler(CommandHandler("weather", cmd_weather))
 app.add_handler(CommandHandler("location", cmd_location))
 app.add_handler(CommandHandler("status", cmd_status))
+app.add_handler(CommandHandler("morning_on", morning_on))
+app.add_handler(CommandHandler("morning_off", morning_off))
+
+job_queue = app.job_queue
+job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
+
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
