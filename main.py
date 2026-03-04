@@ -220,6 +220,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Это звучит серьёзно для плюшевого существа.")
 async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Напиши 'погода' или 'погода завтра' 🧸")
+    return
+
 
 async def cmd_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Ок, отправь геолокацию заново 🧸", reply_markup=location_keyboard())
@@ -251,6 +253,7 @@ app.add_handler(CommandHandler("location", cmd_location))
 app.add_handler(CommandHandler("status", cmd_status))
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
