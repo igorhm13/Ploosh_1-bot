@@ -178,7 +178,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Я плюшевый медвежонок. Немного цифровой.")
         return
 
-    if ("погода" in text_l) or ("сколько градусов" in text_l) or ("завтра" in text_l):
+    if ("погода" in text_l) or ("сколько градусов" in text_l) or ("завтра" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
         if lat is None or lon is None:
             await update.message.reply_text(
                 "Мне нужна твоя геолокация 🧸",
@@ -188,6 +188,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         data = await fetch_weather(lat, lon)
 
+                # 👉 БЫСТРЫЙ ОТВЕТ: БУДЕТ ЛИ ДОЖДЬ
+        if ("дожд" in text_l) or ("зонт" in text_l):
+            d = data["daily"]
+
+            # если спрашивают про завтра — берём индекс 1, иначе сегодня — индекс 0
+            day_idx = 1 if "завтра" in text_l else 0
+            p_rain = d["precipitation_probability_max"][day_idx]
+            wcode = int(d["weather_code"][day_idx])
+            desc_d = code_to_text(wcode)
+
+            when = "завтра" if day_idx == 1 else "сегодня"
+
+            if p_rain >= 60:
+                msg = f"{when.capitalize()} вероятен дождь ☔ ({p_rain}%). {desc_d}. Зонт точно пригодится."
+            elif p_rain >= 30:
+                msg = f"{when.capitalize()} возможен дождь 🌦 ({p_rain}%). {desc_d}. На всякий случай возьми зонт."
+            else:
+                msg = f"{when.capitalize()} дождя почти не будет 🌤 ({p_rain}%). {desc_d}."
+
+            await update.message.reply_text(msg)
+            return
+            
         # 👉 ЕСЛИ ЗАВТРА
         if "завтра" in text_l:
             d = data["daily"]
@@ -253,6 +275,7 @@ app.add_handler(CommandHandler("location", cmd_location))
 app.add_handler(CommandHandler("status", cmd_status))
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
