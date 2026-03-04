@@ -319,7 +319,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lat = user[6] if len(user) > 6 else None
     lon = user[7] if len(user) > 7 else None
 
-    loc = "есть ✅" if (lat is not None and lon is not None) else "нет ❌
+    loc = "есть ✅" if (lat is not None and lon is not None) else "нет ❌"
     
     morning_enabled = user[8] if len(user) > 8 and user[8] is not None else 0
     morning_text = "включены ☀️" if int(morning_enabled) == 1 else "выключены 🌙"
@@ -420,6 +420,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
