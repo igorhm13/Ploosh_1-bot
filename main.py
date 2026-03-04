@@ -319,12 +319,8 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lat = user[6] if len(user) > 6 else None
     lon = user[7] if len(user) > 7 else None
 
-    loc = "есть ✅" if (lat is not None and lon is not None) else "нет ❌"
-await update.message.reply_text(
-    f"Статус Плюша 🧸\n"
-    ...
-)
-
+    loc = "есть ✅" if (lat is not None and lon is not None) else "нет ❌
+    
     morning_enabled = user[8] if len(user) > 8 and user[8] is not None else 0
     morning_text = "включены ☀️" if int(morning_enabled) == 1 else "выключены 🌙"
 
@@ -339,13 +335,13 @@ await update.message.reply_text(
 
 async def morning_weather(context: ContextTypes.DEFAULT_TYPE):
     with db_lock:
-    cursor.execute("""
-        SELECT user_id, lat, lon
-        FROM users
-        WHERE lat IS NOT NULL
-          AND lon IS NOT NULL
-          AND morning_enabled = 1
-    """)
+        cursor.execute("""
+            SELECT user_id, lat, lon
+            FROM users
+            WHERE lat IS NOT NULL
+              AND lon IS NOT NULL
+              AND morning_enabled = 1
+        """)
     users = cursor.fetchall()
 
     for user_id, lat, lon in users:
@@ -424,6 +420,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
