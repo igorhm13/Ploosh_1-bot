@@ -131,13 +131,29 @@ async def fetch_weather(lat: float, lon: float):
 
 async def fetch_city(lat: float, lon: float):
     url = "https://geocoding-api.open-meteo.com/v1/reverse"
+    params = {"latitude": lat, "longitude": lon, "language": "ru", "count": 1}
 
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "language": "ru",
-        "count": 1
-    }
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url, params=params)
+
+        # ВАЖНО: не raise_for_status — потому что 404/429 не должны валить бота
+        if r.status_code != 200:
+            print(f"fetch_city: status={r.status_code}, url={r.url}")
+            return None
+
+        data = r.json()
+        results = data.get("results") or []
+        if not results:
+            return None
+
+        # Можно вернуть более “местно”:
+        # name (поселок/район) чаще всего лучше чем "город"
+        return results[0].get("name")
+
+    except Exception as e:
+        print("fetch_city error:", e)
+        return None
 
     async with httpx.AsyncClient(timeout=10) as client:
         r = await client.get(url, params=params)
@@ -197,12 +213,12 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lat = update.message.location.latitude
     lon = update.message.location.longitude
 
-    place = await fetch_city(lat, lon)
-
+    place = await fetch_city(lat, lon)  # может вернуть None
     update_location(user_id, lat, lon, place)
 
     await update.message.reply_text(
-        "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде."
+        "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде.",
+        reply_markup=main_menu_keyboard()
     )
 
 
@@ -424,33 +440,24 @@ async def morning_weather(context: ContextTypes.DEFAULT_TYPE):
 
 async def morning_on(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
-
-    with db_lock:
-        cursor.execute(
-            "UPDATE users SET morning_enabled = 1 WHERE user_id = ?",
-            (user_id,)
-        )
-        conn.commit()
+    cursor.execute("UPDATE users SET morning_enabled = 1 WHERE user_id = ?", (user_id,))
+    conn.commit()
 
     await update.message.reply_text(
         "Теперь я буду писать тебе каждое утро 🧸☀️\n"
-        "Если захочешь отключить — напиши /morning_off"
+        "Если захочешь отключить — напиши /morning_off",
+        reply_markup=main_menu_keyboard()
     )
-
 
 async def morning_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
-
-    with db_lock:
-        cursor.execute(
-            "UPDATE users SET morning_enabled = 0 WHERE user_id = ?",
-            (user_id,)
-        )
-        conn.commit()
+    cursor.execute("UPDATE users SET morning_enabled = 0 WHERE user_id = ?", (user_id,))
+    conn.commit()
 
     await update.message.reply_text(
-        "Хорошо 🧸 Больше не буду писать по утрам."
-    )
+        "Хорошо 🧸 Больше не буду писать по утрам.",
+        reply_markup=main_menu_keyboard()
+    ))
     
 # ---------- RUN ----------
 app = ApplicationBuilder().token(TOKEN).build()
@@ -469,6 +476,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
