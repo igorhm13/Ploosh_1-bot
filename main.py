@@ -36,7 +36,8 @@ def ensure_columns():
         cursor.execute("ALTER TABLE users ADD COLUMN lat REAL")
     if "lon" not in cols:
         cursor.execute("ALTER TABLE users ADD COLUMN lon REAL")
-
+    if "place" not in cols:
+    cursor.execute("ALTER TABLE users ADD COLUMN place TEXT")
     if "morning_enabled" not in cols:
         cursor.execute("ALTER TABLE users ADD COLUMN morning_enabled INTEGER DEFAULT 0")
 
@@ -63,8 +64,13 @@ def update_user(user_id: str, field: str, value):
     cursor.execute(f"UPDATE users SET {field} = ? WHERE user_id = ?", (value, user_id))
     conn.commit()
 
-
-def update_location(user_id: str, lat: float, lon: float):
+def update_location(user_id: str, lat: float, lon: float, place: str = None):
+    with db_lock:
+        cursor.execute(
+            "UPDATE users SET lat=?, lon=?, place=?, last_seen=? WHERE user_id=?",
+            (lat, lon, place, datetime.datetime.now().isoformat(), user_id)
+        )
+        conn.commit()
     cursor.execute(
         "UPDATE users SET lat=?, lon=?, last_seen=? WHERE user_id=?",
         (lat, lon, datetime.datetime.now().isoformat(), user_id)
@@ -122,7 +128,26 @@ async def fetch_weather(lat: float, lon: float):
         r.raise_for_status()
         return r.json()
 
+async def fetch_city(lat: float, lon: float):
+    url = "https://geocoding-api.open-meteo.com/v1/reverse"
 
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "language": "ru",
+        "count": 1
+    }
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        r = await client.get(url, params=params)
+        r.raise_for_status()
+        data = r.json()
+
+    if "results" in data and len(data["results"]) > 0:
+        return data["results"][0]["name"]
+
+    return None
+    
 def location_keyboard():
     kb = [[KeyboardButton("📍 Отправить геолокацию", request_location=True)]]
     return ReplyKeyboardMarkup(kb, resize_keyboard=True, one_time_keyboard=True)
@@ -170,7 +195,8 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lat = update.message.location.latitude
     lon = update.message.location.longitude
-    update_location(user_id, lat, lon)
+    place = await fetch_city(lat, lon)
+    update_location(user_id, lat, lon, place)
 
     await update.message.reply_text(
         "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде.",
@@ -185,13 +211,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user = get_user(user_id)
 
-    # user tuple: user_id(0), name(1), honey(2), hurt(3), msg_count(4), last_seen(5), lat(6), lon(7)
-    name = user[1]
-    honey = user[2]
-    hurt = user[3]
-    msg_count = user[4]
-    lat = user[6] if len(user) > 6 else None
-    lon = user[7] if len(user) > 7 else None
+    cursor.execute(
+    "SELECT name, honey_level, hurt_level, msg_count, lat, lon, place, morning_enabled "
+    "FROM users WHERE user_id = ?",
+    (user_id,)
+)
+
+row = cursor.fetchone()
+
+name, honey, hurt, msg_count, lat, lon, place, morning_enabled = row
+
+place_text = f"в {place} " if place else ""
+morning_enabled = morning_enabled or 0
+
+   # данные пользователя из БД
+   # name, honey_level, hurt_level, msg_count, lat, lon, place, morning_enabled
 
     msg_count += 1
     update_user(user_id, "msg_count", msg_count)
@@ -242,6 +276,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         data = await fetch_weather(lat, lon)
 
+        place_name = await fetch_city(lat, lon)
+        place = f"в {place_name}" if place_name else ""
+
         # 👉 БЫСТРЫЙ ОТВЕТ: БУДЕТ ЛИ ДОЖДЬ
         if ("дожд" in text_l) or ("зонт" in text_l):
             d = data["daily"]
@@ -255,11 +292,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             when = "завтра" if day_idx == 1 else "сегодня"
 
             if p_rain >= 60:
-                msg = f"{when.capitalize()} вероятен дождь ☔ ({p_rain}%). {desc_d}. Зонт точно пригодится."
+                msg = f"{when.capitalize()} {place} вероятен дождь ☔ ({p_rain}%). {desc_d}. Зонт точно пригодится."
             elif p_rain >= 30:
-                msg = f"{when.capitalize()} возможен дождь 🌦 ({p_rain}%). {desc_d}. На всякий случай возьми зонт."
+                msg = f"{when.capitalize()} {place} возможен дождь 🌦 ({p_rain}%). {desc_d}. На всякий случай возьми зонт."
             else:
-                msg = f"{when.capitalize()} дождя почти не будет 🌤 ({p_rain}%). {desc_d}."
+                msg = f"{when.capitalize()} {place} дождя почти не будет 🌤 ({p_rain}%). {desc_d}."
 
             await update.message.reply_text(msg)
             return
@@ -274,12 +311,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             desc_d = code_to_text(wcode)
 
             await update.message.reply_text(
-                f"Завтра {desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
+                f"Завтра {place} {desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
                 f"Я бы взял зонт… но я мишка 🧸"
             )
             return
 
         # 👉 ИНАЧЕ — СЕЙЧАС
+        place_name = await fetch_city(lat, lon)
+        place = f"в {place_name}" if place_name else ""
+        
         cur = data["current"]
         temp = cur["temperature_2m"]
         feels = cur["apparent_temperature"]
@@ -287,7 +327,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         desc = code_to_text(int(cur["weather_code"]))
 
         await update.message.reply_text(
-            f"Сейчас {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
+            f"Сейчас {place} {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
             f"Погода нормальная… если ты не сахар 🍯"
         )
         return
@@ -420,6 +460,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
