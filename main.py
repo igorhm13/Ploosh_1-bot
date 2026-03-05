@@ -37,7 +37,7 @@ def ensure_columns():
     if "lon" not in cols:
         cursor.execute("ALTER TABLE users ADD COLUMN lon REAL")
     if "place" not in cols:
-    cursor.execute("ALTER TABLE users ADD COLUMN place TEXT")
+        cursor.execute("ALTER TABLE users ADD COLUMN place TEXT")
     if "morning_enabled" not in cols:
         cursor.execute("ALTER TABLE users ADD COLUMN morning_enabled INTEGER DEFAULT 0")
 
@@ -460,6 +460,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
