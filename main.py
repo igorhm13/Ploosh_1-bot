@@ -457,7 +457,7 @@ async def morning_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Хорошо 🧸 Больше не буду писать по утрам.",
         reply_markup=main_menu_keyboard()
-    ))
+    )
     
 # ---------- RUN ----------
 app = ApplicationBuilder().token(TOKEN).build()
@@ -476,6 +476,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
