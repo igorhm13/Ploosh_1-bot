@@ -196,13 +196,14 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lat = update.message.location.latitude
     lon = update.message.location.longitude
+
     place = await fetch_city(lat, lon)
+
     update_location(user_id, lat, lon, place)
 
     await update.message.reply_text(
-        "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде.",
-        reply_markup=main_menu_keyboard()
-        )
+        "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде."
+    )
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -468,6 +469,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
