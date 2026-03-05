@@ -13,6 +13,7 @@ if not TOKEN:
 
 # ---------- DATABASE ----------
 conn = sqlite3.connect("users.db", check_same_thread=False)
+conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
 cursor.execute("""
@@ -215,17 +216,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     "SELECT name, honey_level, hurt_level, msg_count, lat, lon, place, morning_enabled "
     "FROM users WHERE user_id = ?",
     (user_id,)
-)
+    )
 
-row = cursor.fetchone()
+    row = cursor.fetchone()
 
-name, honey, hurt, msg_count, lat, lon, place, morning_enabled = row
+    name = row["name"]
+    honey = row["honey_level"]
+    hurt = row["hurt_level"]
+    msg_count = row["msg_count"]
+    lat = row["lat"]
+    lon = row["lon"]
+    place = row["place"]
+    morning_enabled = row["morning_enabled"]
 
-place_text = f"в {place} " if place else ""
-morning_enabled = morning_enabled or 0
+    place_text = f"в {place} " if place else ""
+    morning_enabled = morning_enabled or 0
 
-   # данные пользователя из БД
-   # name, honey_level, hurt_level, msg_count, lat, lon, place, morning_enabled
+    # данные пользователя из БД
+    # name, honey_level, hurt_level, msg_count, lat, lon, place, morning_enabled
 
     msg_count += 1
     update_user(user_id, "msg_count", msg_count)
@@ -460,6 +468,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
