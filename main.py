@@ -66,7 +66,6 @@ def update_user(user_id: str, field: str, value):
     conn.commit()
 
 def update_location(user_id: str, lat: float, lon: float, place: str = None):
-    with db_lock:
         cursor.execute(
             "UPDATE users SET lat=?, lon=?, place=?, last_seen=? WHERE user_id=?",
             (lat, lon, place, datetime.datetime.now().isoformat(), user_id)
@@ -502,6 +501,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
