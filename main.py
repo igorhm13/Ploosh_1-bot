@@ -137,10 +137,20 @@ async def fetch_city(lat: float, lon: float):
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(url, params=params)
 
-        # ВАЖНО: не raise_for_status — потому что 404/429 не должны валить бота
         if r.status_code != 200:
-            print(f"fetch_city: status={r.status_code}, url={r.url}")
+            print(f"fetch_city status={r.status_code} url={r.url}")
             return None
+
+        data = r.json()
+        results = data.get("results") or []
+        if not results:
+            return None
+
+        return results[0].get("name")
+
+    except Exception as e:
+        print("fetch_city error:", e)
+        return None
 
         data = r.json()
         results = data.get("results") or []
@@ -208,18 +218,38 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
 async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
-    get_user(user_id)
 
-    lat = update.message.location.latitude
-    lon = update.message.location.longitude
+    try:
+        get_user(user_id)
 
-    place = await fetch_city(lat, lon)  # может вернуть None
-    update_location(user_id, lat, lon, place)
+        lat = update.message.location.latitude
+        lon = update.message.location.longitude
 
-    await update.message.reply_text(
-        "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде.",
-        reply_markup=main_menu_keyboard()
-    )
+        # пробуем получить place, но не даём этому сломать сохранение координат
+        place = None
+        try:
+            place = await fetch_city(lat, lon)
+        except Exception as e:
+            print("fetch_city failed:", e)
+
+        # ВАЖНО: сохраняем lat/lon даже если place=None
+        try:
+            update_location(user_id, lat, lon, place)
+        except TypeError:
+            # если у тебя update_location ещё старой сигнатуры (без place)
+            update_location(user_id, lat, lon)
+
+        await update.message.reply_text(
+            "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде.",
+            reply_markup=main_menu_keyboard() if "main_menu_keyboard" in globals() else None
+        )
+
+    except Exception as e:
+        print("handle_location failed:", e)
+        await update.message.reply_text(
+            "Ой… я споткнулся, но уже встаю 🧸\n"
+            "Попробуй отправить геолокацию ещё раз."
+        )
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -281,8 +311,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "помощь" in text_l:
         await help_cmd(update, context)
         return
-
-        # кнопки управления утренними сообщениями
+    # кнопки управления утренними сообщениями
     if "утренние сообщения" in text_l and "вкл" in text_l:
         await morning_on(update, context)
         return
@@ -301,9 +330,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         data = await fetch_weather(lat, lon)
 
-        place_name = await fetch_city(lat, lon)
-        place = f"в {place_name}" if place_name else ""
-
         # 👉 БЫСТРЫЙ ОТВЕТ: БУДЕТ ЛИ ДОЖДЬ
         if ("дожд" in text_l) or ("зонт" in text_l):
             d = data["daily"]
@@ -317,11 +343,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             when = "завтра" if day_idx == 1 else "сегодня"
 
             if p_rain >= 60:
-                msg = f"{when.capitalize()} {place} вероятен дождь ☔ ({p_rain}%). {desc_d}. Зонт точно пригодится."
+                msg = f"{when.capitalize()} {place_text} вероятен дождь ☔ ({p_rain}%). {desc_d}. Зонт точно пригодится."
             elif p_rain >= 30:
-                msg = f"{when.capitalize()} {place} возможен дождь 🌦 ({p_rain}%). {desc_d}. На всякий случай возьми зонт."
+                msg = f"{when.capitalize()} {place_text} возможен дождь 🌦 ({p_rain}%). {desc_d}. На всякий случай возьми зонт."
             else:
-                msg = f"{when.capitalize()} {place} дождя почти не будет 🌤 ({p_rain}%). {desc_d}."
+                msg = f"{when.capitalize()} {place_text} дождя почти не будет 🌤 ({p_rain}%). {desc_d}."
 
             await update.message.reply_text(msg)
             return
@@ -336,7 +362,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             desc_d = code_to_text(wcode)
 
             await update.message.reply_text(
-                f"Завтра {place} {desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
+                f"Завтра {place_text} {desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
                 f"Я бы взял зонт… но я мишка 🧸"
             )
             return
@@ -476,6 +502,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
