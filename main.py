@@ -303,6 +303,56 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "tomorrow" if mode == "dress_advice_tomorrow" else "now"
         )
     )
+
+async def handle_back_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = str(query.from_user.id)
+
+    cursor.execute(
+        "SELECT lat, lon, place FROM users WHERE user_id = ?",
+        (user_id,)
+    )
+    row = cursor.fetchone()
+
+    if not row or row["lat"] is None or row["lon"] is None:
+        await query.edit_message_text("Мне нужна твоя геолокация 🧸")
+        return
+
+    lat = row["lat"]
+    lon = row["lon"]
+    place = row["place"]
+    place_text = f"в {place} " if place else ""
+
+    data = await fetch_weather(lat, lon)
+
+    if query.data == "back_weather_tomorrow":
+        d = data["daily"]
+        tmax = d["temperature_2m_max"][1]
+        tmin = d["temperature_2m_min"][1]
+        p = d["precipitation_probability_max"][1]
+        wcode = int(d["weather_code"][1])
+        desc = code_to_text(wcode)
+
+        await query.edit_message_text(
+            f"Завтра {place_text}{desc}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
+            f"Я бы взял зонт… но я мишка 🧸",
+            reply_markup=dress_advice_keyboard("tomorrow")
+        )
+    else:
+        cur = data["current"]
+        temp = cur["temperature_2m"]
+        feels = cur["apparent_temperature"]
+        wind = cur["wind_speed_10m"]
+        desc = code_to_text(int(cur["weather_code"]))
+
+        await query.edit_message_text(
+            f"Сейчас {place_text}{temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
+            f"Погода нормальная… если ты не сахар 🍯",
+            reply_markup=dress_advice_keyboard("now")
+        )
+        
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "ℹ️ Как спросить Плюша:\n\n"
@@ -627,12 +677,13 @@ app.add_handler(CommandHandler("status", cmd_status))
 app.add_handler(CommandHandler("morning_on", morning_on))
 app.add_handler(CommandHandler("morning_off", morning_off))
 app.add_handler(CallbackQueryHandler(handle_dress_callback, pattern="^dress_advice_(now|tomorrow)$"))
-
+app.add_handler(CallbackQueryHandler(handle_back_weather, pattern="^back_weather_(now|tomorrow)$"))
 job_queue = app.job_queue
 job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
