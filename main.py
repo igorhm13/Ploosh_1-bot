@@ -421,7 +421,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_location(
             chat_id=update.effective_chat.id,
             latitude=lat,
-            longitude=lon
+            longitude=lon,
             live_period=60
         )
 
@@ -550,6 +550,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
