@@ -284,6 +284,19 @@ def main_menu_keyboard():
         ["ℹ️ Помощь"],
     ]
     return ReplyKeyboardMarkup(kb, resize_keyboard=True)
+
+async def plush_reply(update: Update, text: str):
+    await plush_reply(update,
+        text,
+        reply_markup=main_menu_keyboard()
+    )
+
+
+async def plush_reply_inline(update: Update, text: str, keyboard):
+    await plush_reply(update,
+        text,
+        reply_markup=keyboard
+    )
     
 # ---------- HANDLERS ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -297,7 +310,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Меня нужно только спросить — или нажать кнопку ниже.\n"
         "Пока что других вещей я не умею делать."
     )
-    await update.message.reply_text(text, reply_markup=main_menu_keyboard())
+    await plush_reply(update, text, reply_markup=main_menu_keyboard())
 
 async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -417,7 +430,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Чтобы я ответил точно, мне нужна геолокация.\n"
         "Нажми «📍 Отправить геолокацию»."
     )
-    await update.message.reply_text(text, reply_markup=main_menu_keyboard())
+    await plush_reply(update, text, reply_markup=main_menu_keyboard())
     
 async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -442,14 +455,14 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # если у тебя update_location ещё старой сигнатуры (без place)
             update_location(user_id, lat, lon)
 
-        await update.message.reply_text(
+        await plush_reply(update,
             "Запомнил твою геолокацию 🧸 Теперь могу говорить о погоде.",
             reply_markup=main_menu_keyboard() if "main_menu_keyboard" in globals() else None
         )
 
     except Exception as e:
         print("handle_location failed:", e)
-        await update.message.reply_text(
+        await plush_reply(update,
             "Ой… я споткнулся, но уже встаю 🧸\n"
             "Попробуй отправить геолокацию ещё раз."
         )
@@ -491,30 +504,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     detected_name = detect_name(text)
     if detected_name:
         update_user(user_id, "name", detected_name)
-        await update.message.reply_text(f"{detected_name}? Хорошее имя. Я запомню.")
+        await plush_reply(update, f"{detected_name}? Хорошее имя. Я запомню.")
         return
 
     if detect_rudeness(text):
         hurt = min(hurt + 1, 3)
         update_user(user_id, "hurt_level", hurt)
-        await update.message.reply_text("Эй… Я всё-таки плюшевый. Полегче.")
+        await plush_reply(update, "Эй… Я всё-таки плюшевый. Полегче.")
         return
 
     if "привет" in text_l:
         if name:
-            await update.message.reply_text(f"Привет, {name}. Я здесь.")
+            await plush_reply(update, f"Привет, {name}. Я здесь.")
         else:
-            await update.message.reply_text("Привет. Я Плюш 🧸")
+            await plush_reply(update, "Привет. Я Плюш 🧸")
         return
 
     if "кто ты" in text_l:
-        await update.message.reply_text("Я плюшевый медвежонок. Немного цифровой.")
+        await plush_reply(update, "Я плюшевый медвежонок. Немного цифровой.")
         return
         if is_thanks(text):
             honey = min(honey + 1, 10)
             update_user(user_id, "honey_level", honey)
 
-            await update.message.reply_text(
+            await plush_reply(update, 
                 random_reply([
                     "Пожалуйста 🧸",
                     "Всегда рад помочь 🧸",
@@ -527,7 +540,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         honey = min(honey + 1, 10)
         update_user(user_id, "honey_level", honey)
 
-        await update.message.reply_text(
+        await plush_reply(update,
             random_reply([
                 "Ой, мне приятно 🧸",
                 "Я стараюсь изо всех сил.",
@@ -537,7 +550,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_morning(text):
-        await update.message.reply_text(
+        await plush_reply(update,
             random_reply([
                 "Доброе утро 🧸 Пусть день будет мягким.",
                 "Доброе утро 🧸 Надеюсь, сегодня без неприятного дождя.",
@@ -547,7 +560,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_night(text):
-        await update.message.reply_text(
+        await plush_reply(update,
             random_reply([
                 "Спокойной ночи 🧸 Пусть завтра будет хорошая погода.",
                 "Доброй ночи 🧸 Отдыхай, а я пока послежу за небом.",
@@ -557,7 +570,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_sad(text):
-        await update.message.reply_text(
+        await plush_reply(update,
             random_reply([
                 "Мне жаль, что тебе грустно 🧸",
                 "Иногда даже у плюшевых бывают тяжёлые дни 🧸",
@@ -567,7 +580,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_tired(text):
-        await update.message.reply_text(
+        await plush_reply(update,
             random_reply([
                 "Тогда тебе точно нужен отдых 🧸",
                 "Похоже, день был тяжёлый. Побереги себя 🧸",
@@ -577,7 +590,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_cold(text):
-        await update.message.reply_text(
+        await plush_reply(update,
             random_reply([
                 "Тогда лучше что-то тёплое 🧸",
                 "Я бы советовал кофту или куртку 🧸",
@@ -587,7 +600,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_hot(text):
-        await update.message.reply_text(
+        await plush_reply(update,
             random_reply([
                 "Тогда лучше что-то лёгкое 🧸",
                 "Похоже, стоит одеться попроще и полегче.",
@@ -597,13 +610,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_walk_question(text):
-        await update.message.reply_text(
+        await plush_reply(update,
             "Могу подсказать 🧸 Напиши просто «погода» или «погода завтра», и будет понятнее, стоит ли идти гулять."
         )
         return
 
     if is_nice_weather_question(text):
-        await update.message.reply_text(
+        await plush_reply(update,
             "Скажу точнее, если посмотрю погоду 🧸 Напиши «погода»."
         )
         return
@@ -622,7 +635,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if ("холодно" in text_l) or ("жарко" in text_l) or ("куртк" in text_l) or ("как одеться" in text_l):
 
         if lat is None or lon is None:
-            await update.message.reply_text(
+            await plush_reply(update,
                 "Мне нужна твоя геолокация 🧸",
                 reply_markup=location_keyboard()
             )
@@ -645,7 +658,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             advice = "Жарко 🔥 Лучше что-нибудь очень лёгкое."
     
-        await update.message.reply_text(
+        await plush_reply(update,
             f"Сейчас {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
             f"Погода нормальная… если ты не сахар 🍯",
             reply_markup=dress_advice_keyboard("now")
@@ -653,7 +666,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return   
     if ("погода" in text_l) or ("сколько градусов" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
         if lat is None or lon is None:
-            await update.message.reply_text(
+            await plush_reply(update,
                 "Мне нужна твоя геолокация 🧸",
                 reply_markup=location_keyboard()
             )
@@ -680,7 +693,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 msg = f"{when.capitalize()} {place_text} дождя почти не будет 🌤 ({p_rain}%). {desc_d}."
 
-            await update.message.reply_text(msg)
+            await plush_reply(update,(msg))
             return
             
         # 👉 ЕСЛИ ЗАВТРА
@@ -692,7 +705,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             wcode = int(d["weather_code"][1])
             desc_d = code_to_text(wcode)
              
-            await update.message.reply_text(
+            await plush_reply(update,
                 f"Завтра {place_text}{desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
                 f"Я бы взял зонт… но я мишка 🧸",
                 reply_markup=dress_advice_keyboard("tomorrow")
@@ -707,14 +720,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             wind = cur["wind_speed_10m"]
             desc = code_to_text(int(cur["weather_code"]))
         
-            await update.message.reply_text(
+            await plush_reply(update,
                 f"Сейчас {place_text}{temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
                 f"Погода нормальная… если ты не сахар 🍯",
                 reply_markup=dress_advice_keyboard()
             )
             return
         
-    await update.message.reply_text(
+    await plush_reply(update,
     "Я пока не понял запрос 🧸\n\n"
     "Попробуй так:\n"
     "• погода\n"
@@ -724,11 +737,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup=main_menu_keyboard()
     )
 async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Напиши 'погода' или 'погода завтра' 🧸")
+    await plush_reply(update, "Напиши 'погода' или 'погода завтра' 🧸")
     return
 
 async def cmd_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Ок, отправь геолокацию заново 🧸", reply_markup=location_keyboard())
+    await plush_reply(update, "Ок, отправь геолокацию заново 🧸", reply_markup=location_keyboard())
 
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -744,7 +757,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     morning_enabled = user[8] if len(user) > 8 and user[8] is not None else 0
     morning_text = "включены ☀️" if int(morning_enabled) == 1 else "выключены 🌙"
 
-    await update.message.reply_text(
+    await plush_reply(update,
         f"Статус Плюша 🧸\n"
         f"Имя: {name or 'не знаю'}\n"
         f"Геолокация: {loc}\n"
@@ -798,7 +811,7 @@ async def morning_on(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.execute("UPDATE users SET morning_enabled = 1 WHERE user_id = ?", (user_id,))
     conn.commit()
 
-    await update.message.reply_text(
+    await plush_reply(update,
         "Теперь я буду писать тебе каждое утро 🧸☀️\n"
         "Если захочешь отключить — напиши /morning_off",
         reply_markup=main_menu_keyboard()
@@ -809,7 +822,7 @@ async def morning_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.execute("UPDATE users SET morning_enabled = 0 WHERE user_id = ?", (user_id,))
     conn.commit()
 
-    await update.message.reply_text(
+    await plush_reply(update,
         "Хорошо 🧸 Больше не буду писать по утрам.",
         reply_markup=main_menu_keyboard()
     )
@@ -832,6 +845,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
