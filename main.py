@@ -511,17 +511,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Я плюшевый медвежонок. Немного цифровой.")
         return
         if is_thanks(text):
-        honey = min(honey + 1, 10)
-        update_user(user_id, "honey_level", honey)
+            honey = min(honey + 1, 10)
+            update_user(user_id, "honey_level", honey)
 
-        await update.message.reply_text(
-            random_reply([
-                "Пожалуйста 🧸",
-                "Всегда рад помочь 🧸",
-                "Для этого я тут и сижу, плюшевый и полезный."
-            ])
-        )
-        return
+            await update.message.reply_text(
+                random_reply([
+                    "Пожалуйста 🧸",
+                    "Всегда рад помочь 🧸",
+                    "Для этого я тут и сижу, плюшевый и полезный."
+                ])
+            )
+            return
 
     if is_praise(text):
         honey = min(honey + 1, 10)
@@ -832,6 +832,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
