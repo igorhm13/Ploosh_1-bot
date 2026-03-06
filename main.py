@@ -329,7 +329,38 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "утренние сообщения" in text_l and "выкл" in text_l:
         await morning_off(update, context)
         return
-        
+    # 👉 СОВЕТ ПО ОДЕЖДЕ
+    if ("холодно" in text_l) or ("жарко" in text_l) or ("куртк" in text_l) or ("как одеться" in text_l):
+
+        if lat is None or lon is None:
+            await update.message.reply_text(
+                "Мне нужна твоя геолокация 🧸",
+                reply_markup=location_keyboard()
+            )
+            return
+
+        data = await fetch_weather(lat, lon)
+
+        cur = data["current"]
+        temp = cur["temperature_2m"]
+        feels = cur["apparent_temperature"]
+
+        if feels <= 5:
+            advice = "Очень холодно 🧊 Нужна тёплая куртка."
+        elif feels <= 12:
+            advice = "Прохладно 🧥 Лёгкая куртка будет кстати."
+        elif feels <= 20:
+            advice = "Нормальная температура 🙂 Можно без куртки."
+        elif feels <= 27:
+            advice = "Тепло ☀️ Идеально для лёгкой одежды."
+        else:
+            advice = "Жарко 🔥 Лучше что-нибудь очень лёгкое."
+    
+        await update.message.reply_text(
+            f"Сейчас {place_text}{temp:.0f}°C (ощущается как {feels:.0f}°C).\n"
+            f"{advice}"
+        )
+        return   
     if ("погода" in text_l) or ("сколько градусов" in text_l) or ("завтра" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
         if lat is None or lon is None:
             await update.message.reply_text(
@@ -519,6 +550,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
