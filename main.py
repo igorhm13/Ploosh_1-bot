@@ -437,7 +437,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=dress_advice_keyboard("now")
         )
         return   
-    if ("погода" in text_l) or ("сколько градусов" in text_l) or ("завтра" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
+    if ("погода" in text_l) or ("сколько градусов" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
         if lat is None or lon is None:
             await update.message.reply_text(
                 "Мне нужна твоя геолокация 🧸",
@@ -470,44 +470,35 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
             # 👉 ЕСЛИ ЗАВТРА
-            if "завтра" in text_l:
+            elif "завтра" in text_l:
                 d = data["daily"]
                 tmax = d["temperature_2m_max"][1]
                 tmin = d["temperature_2m_min"][1]
                 p = d["precipitation_probability_max"][1]
                 wcode = int(d["weather_code"][1])
                 desc_d = code_to_text(wcode)
-
-            await update.message.reply_text(
-                f"Завтра {place_text}{desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
-                f"Я бы взял зонт… но я мишка 🧸",
-                reply_markup=dress_advice_keyboard("tomorrow")
-            )
+             
+                await update.message.reply_text(
+                    f"Завтра {place_text}{desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
+                    f"Я бы взял зонт… но я мишка 🧸",
+                    reply_markup=dress_advice_keyboard("tomorrow")
+                )
             return
 
         # 👉 ИНАЧЕ — СЕЙЧАС
-        place_name = await fetch_city(lat, lon)
-        place = f"в {place_name}" if place_name else ""
-        
-        cur = data["current"]
-        temp = cur["temperature_2m"]
-        feels = cur["apparent_temperature"]
-        wind = cur["wind_speed_10m"]
-        desc = code_to_text(int(cur["weather_code"]))
+        else: 
+            cur = data["current"]
+            temp = cur["temperature_2m"]
+            feels = cur["apparent_temperature"]
+            wind = cur["wind_speed_10m"]
+            desc = code_to_text(int(cur["weather_code"]))
 
-        await context.bot.send_location(
-            chat_id=update.effective_chat.id,
-            latitude=lat,
-            longitude=lon,
-            live_period=60
-        )
-
-        await update.message.reply_text(
-            f"Сейчас {place_text}{temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
-            f"Погода нормальная… если ты не сахар 🍯",
-            reply_markup=dress_advice_keyboard()
-        )
-        return
+            await update.message.reply_text(
+                f"Сейчас {place_text}{temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
+                f"Погода нормальная… если ты не сахар 🍯",
+                reply_markup=dress_advice_keyboard()
+            )
+            return
 
 
         await update.message.reply_text(
@@ -567,7 +558,9 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
     if rain >= 50:
         advice += " И захвати зонт ☔"
 
-    await query.message.reply_text(f"👕 Как одеться:\n{advice}")
+    await query.edit_message_text(
+    f"👕 {when_text} лучше одеться так:\n\n{advice}"
+    )
 
 async def cmd_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Ок, отправь геолокацию заново 🧸", reply_markup=location_keyboard())
@@ -674,6 +667,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
