@@ -556,23 +556,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             feels = cur["apparent_temperature"]
             wind = cur["wind_speed_10m"]
             desc = code_to_text(int(cur["weather_code"]))
-
+        
             await update.message.reply_text(
                 f"Сейчас {place_text}{temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
                 f"Погода нормальная… если ты не сахар 🍯",
                 reply_markup=dress_advice_keyboard()
             )
             return
-
-
-        await update.message.reply_text(
-        "Я пока не понял запрос 🧸\n\n"
-        "Попробуй так:\n"
-        "• погода\n"
-        "• погода завтра\n"
-        "• будет ли дождь\n\n"
-        "Или нажми кнопку внизу.",
-        reply_markup=main_menu_keyboard()
+        
+    await update.message.reply_text(
+    "Я пока не понял запрос 🧸\n\n"
+    "Попробуй так:\n"
+    "• погода\n"
+    "• погода завтра\n"
+    "• будет ли дождь\n\n"
+    "Или нажми кнопку внизу.",
+    reply_markup=main_menu_keyboard()
     )
 async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Напиши 'погода' или 'погода завтра' 🧸")
@@ -683,6 +682,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
