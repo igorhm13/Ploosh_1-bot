@@ -208,7 +208,19 @@ def dress_advice_keyboard(mode= "now"):
             [InlineKeyboardButton("👕 Как одеться?", callback_data="dress_advice_now")]
         ]
     return InlineKeyboardMarkup(keyboard) 
+    
+def back_to_weather_keyboard(mode="now"):
+    if mode == "tomorrow":
+        keyboard = [
+            [InlineKeyboardButton("⬅️ Назад к погоде", callback_data="back_weather_tomorrow")]
+        ]
+    else:
+        keyboard = [
+            [InlineKeyboardButton("⬅️ Назад к погоде", callback_data="back_weather_now")]
+        ]
 
+    return InlineKeyboardMarkup(keyboard)
+    
 def main_menu_keyboard():
     kb = [
         ["🌡 Погода сейчас", "📅 Погода завтра"],
@@ -621,6 +633,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
