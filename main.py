@@ -516,54 +516,6 @@ async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Напиши 'погода' или 'погода завтра' 🧸")
     return
 
-async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    user_id = str(query.from_user.id)
-
-    cursor.execute(
-        "SELECT lat, lon FROM users WHERE user_id = ?",
-        (user_id,)
-    )
-    row = cursor.fetchone()
-
-    if not row or row["lat"] is None or row["lon"] is None:
-        await query.message.reply_text(
-            "Мне нужна твоя геолокация 🧸",
-            reply_markup=location_keyboard()
-        )
-        return
-
-    lat = row["lat"]
-    lon = row["lon"]
-
-    data = await fetch_weather(lat, lon)
-    cur = data["current"]
-    temp_now = cur["temperature_2m"]
-    feels = cur["apparent_temperature"]
-    rain = data["daily"]["precipitation_probability_max"][0]
-
-    temp_for_clothes = feels if feels is not None else temp_now
-
-    if temp_for_clothes >= 28:
-        advice = "Будет жарко — лучше что-то лёгкое: футболка, платье или рубашка с коротким рукавом."
-    elif temp_for_clothes >= 22:
-        advice = "Довольно тепло — подойдёт лёгкая одежда. На вечер можно взять тонкую накидку."
-    elif temp_for_clothes >= 16:
-        advice = "Нормально прохладно — лучше надеть что-то с длинным рукавом или лёгкую кофту."
-    elif temp_for_clothes >= 10:
-        advice = "Прохладно — я бы советовал куртку или тёплую кофту."
-    else:
-        advice = "Холодно — лучше тёплая куртка и что-то плотное."
-
-    if rain >= 50:
-        advice += " И захвати зонт ☔"
-
-    await query.edit_message_text(
-    f"👕 {when_text} лучше одеться так:\n\n{advice}"
-    )
-
 async def cmd_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Ок, отправь геолокацию заново 🧸", reply_markup=location_keyboard())
 
@@ -669,6 +621,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
