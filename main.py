@@ -320,9 +320,9 @@ async def handle_back_weather(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.edit_message_text("Мне нужна твоя геолокация 🧸")
         return
 
-    lat = row["lat"]
-    lon = row["lon"]
-    place = row["place"]
+    lat = row[0]
+    lon = row[1]
+    place = row[2]
     place_text = f"в {place} " if place else ""
 
     data = await fetch_weather(lat, lon)
@@ -683,6 +683,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
