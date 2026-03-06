@@ -198,11 +198,16 @@ def location_keyboard():
     kb = [[KeyboardButton("📍 Отправить геолокацию", request_location=True)]]
     return ReplyKeyboardMarkup(kb, resize_keyboard=True, one_time_keyboard=True)
     
-def dress_advice_keyboard():
-    keyboard = [
-        [InlineKeyboardButton("👕 Как одеться?", callback_data="dress_advice_now")]
-    ]
-    return InlineKeyboardMarkup(keyboard)  
+def dress_advice_keyboard(mode: str = "now"):
+    if mode == "tomorrow":
+        keyboard = [
+            [InlineKeyboardButton("👕 Как одеться завтра?", callback_data="dress_advice_tomorrow")]
+        ]
+    else:
+        keyboard = [
+            [InlineKeyboardButton("👕 Как одеться?", callback_data="dress_advice_now")]
+        ]
+    return InlineKeyboardMarkup(keyboard) 
 
 def main_menu_keyboard():
     kb = [
@@ -231,6 +236,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    mode = query.data
 
     user_id = str(query.from_user.id)
     get_user(user_id)
@@ -252,12 +258,21 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
     lon = row["lon"]
 
     data = await fetch_weather(lat, lon)
-    cur = data["current"]
-    temp_now = cur["temperature_2m"]
-    feels = cur["apparent_temperature"]
-    rain = data["daily"]["precipitation_probability_max"][0]
-
-    temp_for_clothes = feels if feels is not None else temp_now
+    
+    if mode == "dress_advice_tomorrow":
+        temp_min = data["daily"]["temperature_2m_min"][1]
+        temp_max = data["daily"]["temperature_2m_max"][1]
+        rain = data["daily"]["precipitation_probability_max"][1]
+        temp_for_clothes = temp_max
+        when_text = "Завтра"
+    else:
+        cur = data["current"]
+        temp_now = cur["temperature_2m"]
+        feels = cur["apparent_temperature"]
+        rain = data["daily"]["precipitation_probability_max"][0]
+        temp_for_clothes = feels if feels is not None else temp_now
+        when_text = "Сейчас"
+    
 
     if temp_for_clothes >= 28:
         advice = "Будет жарко — лучше что-то лёгкое: футболка, платье или рубашка с коротким рукавом."
@@ -273,7 +288,7 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
     if rain >= 50:
         advice += " И захвати зонт ☔"
 
-    await query.message.reply_text(f"👕 Как одеться:\n{advice}")
+    await query.message.reply_text(f"👕 {when_text} лучше одеться так:\n{advice}")
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "ℹ️ Как спросить Плюша:\n\n"
@@ -419,7 +434,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"Сейчас {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
             f"Погода нормальная… если ты не сахар 🍯",
-            reply_markup=dress_advice_keyboard()
+            reply_markup=dress_advice_keyboard("now")
         )
         return   
     if ("погода" in text_l) or ("сколько градусов" in text_l) or ("завтра" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
@@ -454,18 +469,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(msg)
             return
             
-        # 👉 ЕСЛИ ЗАВТРА
-        if "завтра" in text_l:
-            d = data["daily"]
-            tmax = d["temperature_2m_max"][1]
-            tmin = d["temperature_2m_min"][1]
-            p = d["precipitation_probability_max"][1]
-            wcode = int(d["weather_code"][1])
-            desc_d = code_to_text(wcode)
+            # 👉 ЕСЛИ ЗАВТРА
+            if "завтра" in text_l:
+                d = data["daily"]
+                tmax = d["temperature_2m_max"][1]
+                tmin = d["temperature_2m_min"][1]
+                p = d["precipitation_probability_max"][1]
+                wcode = int(d["weather_code"][1])
+                desc_d = code_to_text(wcode)
 
             await update.message.reply_text(
-                f"Завтра {place_text} {desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
-                f"Я бы взял зонт… но я мишка 🧸"
+                f"Завтра {place_text}{desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
+                f"Я бы взял зонт… но я мишка 🧸",
+                reply_markup=dress_advice_keyboard("tomorrow")
             )
             return
 
@@ -651,13 +667,14 @@ app.add_handler(CommandHandler("location", cmd_location))
 app.add_handler(CommandHandler("status", cmd_status))
 app.add_handler(CommandHandler("morning_on", morning_on))
 app.add_handler(CommandHandler("morning_off", morning_off))
-app.add_handler(CallbackQueryHandler(handle_dress_callback, pattern="^dress_advice_now$"))
+app.add_handler(CallbackQueryHandler(handle_dress_callback, pattern="^dress_advice_(now|tomorrow)$"))
 
 job_queue = app.job_queue
 job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
