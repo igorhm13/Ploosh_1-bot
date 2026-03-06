@@ -387,6 +387,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         wind = cur["wind_speed_10m"]
         desc = code_to_text(int(cur["weather_code"]))
 
+        await context.bot.send_location(
+            chat_id=update.effective_chat.id,
+            latitude=lat,
+            longitude=lon
+            live_period=60
+        )
+
         await update.message.reply_text(
             f"Сейчас {place} {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
             f"Погода нормальная… если ты не сахар 🍯"
@@ -512,6 +519,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
