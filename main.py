@@ -5,6 +5,7 @@ from telegram.ext import CommandHandler
 
 import httpx
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
 from telegram.ext import CallbackQueryHandler
 
@@ -604,6 +605,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
