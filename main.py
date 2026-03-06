@@ -259,7 +259,6 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
     data = await fetch_weather(lat, lon)
 
     if mode == "dress_advice_tomorrow":
-        temp_min = data["daily"]["temperature_2m_min"][1]
         temp_max = data["daily"]["temperature_2m_max"][1]
         rain = data["daily"]["precipitation_probability_max"][1]
         temp_for_clothes = temp_max
@@ -670,6 +669,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
