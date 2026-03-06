@@ -1,6 +1,8 @@
 import sqlite3
 import datetime
 import os
+import random
+
 from telegram.ext import (
     ApplicationBuilder,
     MessageHandler,
@@ -99,7 +101,59 @@ def detect_name(text: str):
     if "меня зовут" in t:
         return text.split()[-1]
     return None
+def random_reply(options):
+    return random.choice(options)
 
+
+def is_thanks(text: str) -> bool:
+    t = text.lower()
+    return ("спасибо" in t) or ("благодарю" in t)
+
+
+def is_praise(text: str) -> bool:
+    t = text.lower()
+    praise_words = ["молодец", "умница", "ты классный", "хороший бот", "ты хороший", "супер"]
+    return any(word in t for word in praise_words)
+
+
+def is_morning(text: str) -> bool:
+    t = text.lower()
+    return "доброе утро" in t
+
+
+def is_night(text: str) -> bool:
+    t = text.lower()
+    return ("спокойной ночи" in t) or ("доброй ночи" in t)
+
+
+def is_sad(text: str) -> bool:
+    t = text.lower()
+    return ("мне грустно" in t) or ("грустно" in t)
+
+
+def is_tired(text: str) -> bool:
+    t = text.lower()
+    return ("я устал" in t) or ("я устала" in t) or ("устал" in t) or ("устала" in t)
+
+
+def is_cold(text: str) -> bool:
+    t = text.lower()
+    return ("мне холодно" in t) or ("холодно" in t)
+
+
+def is_hot(text: str) -> bool:
+    t = text.lower()
+    return ("мне жарко" in t) or ("жарко" in t)
+
+
+def is_walk_question(text: str) -> bool:
+    t = text.lower()
+    return ("идти гулять" in t) or ("можно гулять" in t) or ("гулять?" in t)
+
+
+def is_nice_weather_question(text: str) -> bool:
+    t = text.lower()
+    return ("приятная погода" in t) or ("хорошая погода" in t)
 
 # ---------- WEATHER ----------
 WEATHER_CODES = {
@@ -456,7 +510,103 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "кто ты" in text_l:
         await update.message.reply_text("Я плюшевый медвежонок. Немного цифровой.")
         return
+        if is_thanks(text):
+        honey = min(honey + 1, 10)
+        update_user(user_id, "honey_level", honey)
 
+        await update.message.reply_text(
+            random_reply([
+                "Пожалуйста 🧸",
+                "Всегда рад помочь 🧸",
+                "Для этого я тут и сижу, плюшевый и полезный."
+            ])
+        )
+        return
+
+    if is_praise(text):
+        honey = min(honey + 1, 10)
+        update_user(user_id, "honey_level", honey)
+
+        await update.message.reply_text(
+            random_reply([
+                "Ой, мне приятно 🧸",
+                "Я стараюсь изо всех сил.",
+                "Плюш немного смутился, но доволен 🧸"
+            ])
+        )
+        return
+
+    if is_morning(text):
+        await update.message.reply_text(
+            random_reply([
+                "Доброе утро 🧸 Пусть день будет мягким.",
+                "Доброе утро 🧸 Надеюсь, сегодня без неприятного дождя.",
+                "Доброе утро 🧸 Я уже готов говорить о погоде."
+            ])
+        )
+        return
+
+    if is_night(text):
+        await update.message.reply_text(
+            random_reply([
+                "Спокойной ночи 🧸 Пусть завтра будет хорошая погода.",
+                "Доброй ночи 🧸 Отдыхай, а я пока послежу за небом.",
+                "Спокойной ночи 🧸 Плюш тоже уже почти спит."
+            ])
+        )
+        return
+
+    if is_sad(text):
+        await update.message.reply_text(
+            random_reply([
+                "Мне жаль, что тебе грустно 🧸",
+                "Иногда даже у плюшевых бывают тяжёлые дни 🧸",
+                "Хочется, чтобы тебе стало чуть легче 🧸"
+            ])
+        )
+        return
+
+    if is_tired(text):
+        await update.message.reply_text(
+            random_reply([
+                "Тогда тебе точно нужен отдых 🧸",
+                "Похоже, день был тяжёлый. Побереги себя 🧸",
+                "Усталость — серьёзная штука. Лучше немного выдохнуть 🧸"
+            ])
+        )
+        return
+
+    if is_cold(text):
+        await update.message.reply_text(
+            random_reply([
+                "Тогда лучше что-то тёплое 🧸",
+                "Я бы советовал кофту или куртку 🧸",
+                "Если холодно — не геройствуй, утеплись 🧸"
+            ])
+        )
+        return
+
+    if is_hot(text):
+        await update.message.reply_text(
+            random_reply([
+                "Тогда лучше что-то лёгкое 🧸",
+                "Похоже, стоит одеться попроще и полегче.",
+                "Если жарко — вода и лёгкая одежда будут хорошей идеей 🧸"
+            ])
+        )
+        return
+
+    if is_walk_question(text):
+        await update.message.reply_text(
+            "Могу подсказать 🧸 Напиши просто «погода» или «погода завтра», и будет понятнее, стоит ли идти гулять."
+        )
+        return
+
+    if is_nice_weather_question(text):
+        await update.message.reply_text(
+            "Скажу точнее, если посмотрю погоду 🧸 Напиши «погода»."
+        )
+        return
     if "помощь" in text_l:
         await help_cmd(update, context)
         return
@@ -682,6 +832,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
