@@ -129,21 +129,32 @@ async def fetch_weather(lat: float, lon: float):
         return r.json()
 
 async def fetch_city(lat: float, lon: float):
-    url = "https://geocoding-api.open-meteo.com/v1/reverse"
-    params = {"latitude": lat, "longitude": lon, "language": "ru", "count": 1}
+    url = "https://nominatim.openstreetmap.org/reverse"
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "format": "json",
+        "zoom": 10,
+        "addressdetails": 1
+    }
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(url, params=params)
 
-        if r.status_code != 200:
-            print(f"fetch_city status={r.status_code} url={r.url}")
-            return None
-
         data = r.json()
-        results = data.get("results") or []
-        if not results:
-            return None
+        address = data.get("address", {})
+
+        return (
+            address.get("city")
+            or address.get("town")
+            or address.get("village")
+            or address.get("state")
+        )
+
+    except Exception as e:
+        print("fetch_city error:", e)
+        return None
 
         return results[0].get("name")
 
@@ -501,6 +512,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
