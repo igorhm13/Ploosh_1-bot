@@ -198,7 +198,7 @@ def location_keyboard():
     kb = [[KeyboardButton("📍 Отправить геолокацию", request_location=True)]]
     return ReplyKeyboardMarkup(kb, resize_keyboard=True, one_time_keyboard=True)
     
-def dress_advice_keyboard(mode: str = "now"):
+def dress_advice_keyboard(mode= "now"):
     if mode == "tomorrow":
         keyboard = [
             [InlineKeyboardButton("👕 Как одеться завтра?", callback_data="dress_advice_tomorrow")]
@@ -236,10 +236,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    mode = query.data
 
+    mode = query.data
     user_id = str(query.from_user.id)
-    get_user(user_id)
 
     cursor.execute(
         "SELECT lat, lon FROM users WHERE user_id = ?",
@@ -258,7 +257,7 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
     lon = row["lon"]
 
     data = await fetch_weather(lat, lon)
-    
+
     if mode == "dress_advice_tomorrow":
         temp_min = data["daily"]["temperature_2m_min"][1]
         temp_max = data["daily"]["temperature_2m_max"][1]
@@ -272,7 +271,6 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
         rain = data["daily"]["precipitation_probability_max"][0]
         temp_for_clothes = feels if feels is not None else temp_now
         when_text = "Сейчас"
-    
 
     if temp_for_clothes >= 28:
         advice = "Будет жарко — лучше что-то лёгкое: футболка, платье или рубашка с коротким рукавом."
@@ -288,7 +286,12 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
     if rain >= 50:
         advice += " И захвати зонт ☔"
 
-    await query.message.reply_text(f"👕 {when_text} лучше одеться так:\n{advice}")
+    await query.edit_message_text(
+        f"👕 {when_text} лучше одеться так:\n\n{advice}",
+        reply_markup=back_to_weather_keyboard(
+            "tomorrow" if mode == "dress_advice_tomorrow" else "now"
+        )
+    )
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "ℹ️ Как спросить Плюша:\n\n"
@@ -667,6 +670,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
