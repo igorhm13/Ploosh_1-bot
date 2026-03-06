@@ -469,20 +469,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(msg)
             return
             
-            # 👉 ЕСЛИ ЗАВТРА
-            elif "завтра" in text_l:
-                d = data["daily"]
-                tmax = d["temperature_2m_max"][1]
-                tmin = d["temperature_2m_min"][1]
-                p = d["precipitation_probability_max"][1]
-                wcode = int(d["weather_code"][1])
-                desc_d = code_to_text(wcode)
+        # 👉 ЕСЛИ ЗАВТРА
+        elif "завтра" in text_l:
+            d = data["daily"]
+            tmax = d["temperature_2m_max"][1]
+            tmin = d["temperature_2m_min"][1]
+            p = d["precipitation_probability_max"][1]
+            wcode = int(d["weather_code"][1])
+            desc_d = code_to_text(wcode)
              
-                await update.message.reply_text(
-                    f"Завтра {place_text}{desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
-                    f"Я бы взял зонт… но я мишка 🧸",
-                    reply_markup=dress_advice_keyboard("tomorrow")
-                )
+            await update.message.reply_text(
+                f"Завтра {place_text}{desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
+                f"Я бы взял зонт… но я мишка 🧸",
+                reply_markup=dress_advice_keyboard("tomorrow")
+            )
             return
 
         # 👉 ИНАЧЕ — СЕЙЧАС
@@ -667,6 +667,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
