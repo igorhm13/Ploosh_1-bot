@@ -186,10 +186,15 @@ async def fetch_weather(lat: float, lon: float):
         "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code",
         "timezone": "auto"
     }
-    async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.get(url, params=params)
-        r.raise_for_status()
-        return r.json()
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(url, params=params)
+            r.raise_for_status()
+            return r.json()
+    except Exception as e:
+        print("fetch_weather failed:", e)
+        return None
 
 async def fetch_city(lat: float, lon: float):
     url = "https://nominatim.openstreetmap.org/reverse"
@@ -336,7 +341,12 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
     lon = row["lon"]
 
     data = await fetch_weather(lat, lon)
-
+        if data is None:
+            await update.message.reply_text(
+                "Я не смог сейчас достучаться до погоды 🧸 Попробуй ещё раз через минуту.",
+                reply_markup=main_menu_keyboard()
+            )
+            return
     if mode == "dress_advice_tomorrow":
         temp_max = data["daily"]["temperature_2m_max"][1]
         rain = data["daily"]["precipitation_probability_max"][1]
@@ -845,6 +855,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
