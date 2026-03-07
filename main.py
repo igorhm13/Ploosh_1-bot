@@ -550,8 +550,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         honey = min(honey + 1, 10)
         update_user(user_id, "honey_level", honey)
       
-        await plush_reply(
-            update,
+        await update.message.reply_test(
             random_reply([
                 "Пожалуйста 🧸",
                 "Всегда рад помочь 🧸",
@@ -693,7 +692,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             advice = "Жарко 🔥 Лучше что-нибудь очень лёгкое."
     
         await update.message.reply_text(
-            f"Сейчас {temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
+            f"Сейчас {temp:.0f}°C (ощущается как {feels:.0f}°C).\n"
             f"Погода нормальная… если ты не сахар 🍯",
             reply_markup=dress_advice_keyboard("now")
         )
@@ -707,6 +706,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         data = await fetch_weather(lat, lon)
+
+        place_name = await fetch_city(lat, lon)
+        place = f"в {place_name}" if place_name else ""
 
         # 👉 БЫСТРЫЙ ОТВЕТ: БУДЕТ ЛИ ДОЖДЬ
         if ("дожд" in text_l) or ("зонт" in text_l):
@@ -731,7 +733,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
             
         # 👉 ЕСЛИ ЗАВТРА
-        if "завтра" in text_l:
+        elif "завтра" in text_l:
             d = data["daily"]
             tmax = d["temperature_2m_max"][1]
             tmin = d["temperature_2m_min"][1]
@@ -745,9 +747,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=dress_advice_keyboard("tomorrow")
             )
             return
-
-        # 👉 ИНАЧЕ — СЕЙЧАС
-        else: 
+        else:
+            # 👉 ИНАЧЕ — СЕЙЧАС
             cur = data["current"]
             temp = cur["temperature_2m"]
             feels = cur["apparent_temperature"]
@@ -762,13 +763,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
     await update.message.reply_text(
-    "Я пока не понял запрос 🧸\n\n"
-    "Попробуй так:\n"
-    "• погода\n"
-    "• погода завтра\n"
-    "• будет ли дождь\n\n"
-    "Или нажми кнопку внизу.",
-    reply_markup=main_menu_keyboard()
+        "Я пока не понял запрос 🧸\n\n"
+        "Попробуй так:\n"
+        "• погода\n"
+        "• погода завтра\n"
+        "• будет ли дождь\n\n"
+        "Или нажми кнопку внизу.",
+        reply_markup=main_menu_keyboard()
     )
 async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await plush_reply(update, "Напиши 'погода' или 'погода завтра' 🧸")
@@ -880,6 +881,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
