@@ -587,7 +587,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_night(text):
-       await plush_reply(
+        await plush_reply(
             update,
             random_reply([
                 "Спокойной ночи 🧸 Пусть завтра будет хорошая погода.",
@@ -874,6 +874,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
