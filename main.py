@@ -733,7 +733,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
             
         # 👉 ЕСЛИ ЗАВТРА
-        elif "завтра" in text_l:
+        if "завтра" in text_l:
             d = data["daily"]
             tmax = d["temperature_2m_max"][1]
             tmin = d["temperature_2m_min"][1]
@@ -881,6 +881,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
