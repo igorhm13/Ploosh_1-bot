@@ -341,12 +341,12 @@ async def handle_dress_callback(update: Update, context: ContextTypes.DEFAULT_TY
     lon = row["lon"]
 
     data = await fetch_weather(lat, lon)
-        if data is None:
-            await update.message.reply_text(
-                "Я не смог сейчас достучаться до погоды 🧸 Попробуй ещё раз через минуту.",
-                reply_markup=main_menu_keyboard()
-            )
-            return
+    if data is None:
+        await update.message.reply_text(
+            "Я не смог сейчас достучаться до погоды 🧸 Попробуй ещё раз через минуту.",
+            reply_markup=main_menu_keyboard()
+        )
+        return
     if mode == "dress_advice_tomorrow":
         temp_max = data["daily"]["temperature_2m_max"][1]
         rain = data["daily"]["precipitation_probability_max"][1]
@@ -402,7 +402,21 @@ async def handle_back_weather(update: Update, context: ContextTypes.DEFAULT_TYPE
     place = row[2]
     place_text = f"в {place} " if place else ""
 
-    data = await fetch_weather(lat, lon)
+    try:
+         data = await fetch_weather(lat, lon)
+    except Exception as e:
+        print("weather request failed:", e)
+        await update.message.reply_text(
+            "Я не смог сейчас достучаться до сервиса погоды 🧸 Попробуй чуть позже.",
+            reply_markup=main_menu_keyboard()
+        )
+        return
+    if data is None:
+        await update.message.reply_text(
+            "Я не смог сейчас получить погоду 🧸 Попробуй ещё раз через минуту.",
+            reply_markup=main_menu_keyboard()
+        )
+        return    
 
     if query.data == "back_weather_tomorrow":
         d = data["daily"]
@@ -855,6 +869,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
