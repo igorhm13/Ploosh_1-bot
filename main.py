@@ -565,7 +565,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         honey = min(honey + 1, 10)
         update_user(user_id, "honey_level", honey)
 
-        await update.message.reply_text(
+        await plush_reply(
+            update,
             random_reply([
                 "Ой, мне приятно 🧸",
                 "Я стараюсь изо всех сил.",
@@ -873,6 +874,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
