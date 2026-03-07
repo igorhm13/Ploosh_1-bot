@@ -528,31 +528,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     detected_name = detect_name(text)
     if detected_name:
         update_user(user_id, "name", detected_name)
-        await update.message.reply_text( f"{detected_name}? Хорошее имя. Я запомню.")
+        await plush_reply(update, f"{detected_name}? Хорошее имя. Я запомню.")
         return
 
     if detect_rudeness(text):
         hurt = min(hurt + 1, 3)
         update_user(user_id, "hurt_level", hurt)
-        await update.message.reply_text( "Эй… Я всё-таки плюшевый. Полегче.")
+        await plush_reply(update, f"{detected_name}? Хорошее имя. Я запомню.")
         return
 
     if "привет" in text_l:
         if name:
-            await update.message.reply_text( f"Привет, {name}. Я здесь.")
+            await plush_reply(update, f"Привет, {name}. Я здесь.")
         else:
-            await update.message.reply_text( "Привет. Я Плюш 🧸")
+            await plush_reply(update, "Привет. Я Плюш 🧸")
         return
 
     if "кто ты" in text_l:
-        await update.message.reply_text( "Я плюшевый медвежонок. Немного цифровой.")
+        await plush_reply(update, "Я плюшевый медвежонок. Немного цифровой.")
         return
         if is_thanks(text):
             honey = min(honey + 1, 10)
             update_user(user_id, "honey_level", honey)
 
-            await update.message.reply_text( 
-                random_reply([
+            await plush_reply(
+            update,
+            random_reply([
                     "Пожалуйста 🧸",
                     "Всегда рад помочь 🧸",
                     "Для этого я тут и сижу, плюшевый и полезный."
@@ -574,7 +575,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_morning(text):
-        await update.message.reply_text(
+        await plush_reply(
+            update,
             random_reply([
                 "Доброе утро 🧸 Пусть день будет мягким.",
                 "Доброе утро 🧸 Надеюсь, сегодня без неприятного дождя.",
@@ -584,7 +586,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_night(text):
-        await update.message.reply_text(
+       await plush_reply(
+            update,
             random_reply([
                 "Спокойной ночи 🧸 Пусть завтра будет хорошая погода.",
                 "Доброй ночи 🧸 Отдыхай, а я пока послежу за небом.",
@@ -761,7 +764,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup=main_menu_keyboard()
     )
 async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text( "Напиши 'погода' или 'погода завтра' 🧸")
+    await plush_reply(update, "Напиши 'погода' или 'погода завтра' 🧸")
     return
 
 async def cmd_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -781,7 +784,8 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     morning_enabled = user[8] if len(user) > 8 and user[8] is not None else 0
     morning_text = "включены ☀️" if int(morning_enabled) == 1 else "выключены 🌙"
 
-    await update.message.reply_text(
+    await plush_reply(
+        update,
         f"Статус Плюша 🧸\n"
         f"Имя: {name or 'не знаю'}\n"
         f"Геолокация: {loc}\n"
@@ -869,6 +873,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
