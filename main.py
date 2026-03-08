@@ -204,6 +204,7 @@ async def fetch_city(lat: float, lon: float):
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(url, params=params)
+            r.raise_for_status()
 
         data = r.json()
         address = data.get("address", {})
@@ -218,35 +219,6 @@ async def fetch_city(lat: float, lon: float):
     except Exception as e:
         print("fetch_city error:", e)
         return None
-
-        return results[0].get("name")
-
-    except Exception as e:
-        print("fetch_city error:", e)
-        return None
-
-        data = r.json()
-        results = data.get("results") or []
-        if not results:
-            return None
-
-        # Можно вернуть более “местно”:
-        # name (поселок/район) чаще всего лучше чем "город"
-        return results[0].get("name")
-
-    except Exception as e:
-        print("fetch_city error:", e)
-        return None
-
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(url, params=params)
-        r.raise_for_status()
-        data = r.json()
-
-    if "results" in data and len(data["results"]) > 0:
-        return data["results"][0]["name"]
-
-    return None
     
 def location_keyboard():
     kb = [[KeyboardButton("📍 Отправить геолокацию", request_location=True)]]
@@ -286,11 +258,8 @@ def main_menu_keyboard():
     return ReplyKeyboardMarkup(kb, resize_keyboard=True)
 
 async def plush_reply(update: Update, text: str):
-    await update.message.reply_text(
-        text,
-        reply_markup=main_menu_keyboard()
-    )
-
+    async def plush_reply(update: Update, text: str):
+    await update.message.reply_text(text, reply_markup=main_menu_keyboard())
 
 async def plush_reply_inline(update: Update, text: str, keyboard):
     await update.message.reply_text(
@@ -533,7 +502,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if detect_rudeness(text):
         hurt = min(hurt + 1, 3)
         update_user(user_id, "hurt_level", hurt)
-        await plush_reply(update, f"{detected_name}? Хорошее имя. Я запомню.")
+        await plush_reply(update, "Плюшу немного обидно 🧸")
         return
 
     if "привет" in text_l:
@@ -550,7 +519,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         honey = min(honey + 1, 10)
         update_user(user_id, "honey_level", honey)
       
-        await update.message.reply_test(
+        await update.message.reply_text(
             random_reply([
                 "Пожалуйста 🧸",
                 "Всегда рад помочь 🧸",
@@ -697,73 +666,69 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=dress_advice_keyboard("now")
         )
         return   
-    if ("погода" in text_l) or ("сколько градусов" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
-        if lat is None or lon is None:
-            await update.message.reply_text(
-                "Мне нужна твоя геолокация 🧸",
-                reply_markup=location_keyboard()
-            )
-            return
+    if ("погода" in text_l) or ("градус" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
 
-        data = await fetch_weather(lat, lon)
-
-        place_name = await fetch_city(lat, lon)
-        place = f"в {place_name}" if place_name else ""
-
-        # 👉 БЫСТРЫЙ ОТВЕТ: БУДЕТ ЛИ ДОЖДЬ
-        if ("дожд" in text_l) or ("зонт" in text_l):
-            d = data["daily"]
-
-            # если спрашивают про завтра — берём индекс 1, иначе сегодня — индекс 0
-            day_idx = 1 if "завтра" in text_l else 0
-            p_rain = d["precipitation_probability_max"][day_idx]
-            wcode = int(d["weather_code"][day_idx])
-            desc_d = code_to_text(wcode)
-
-            when = "завтра" if day_idx == 1 else "сегодня"
-
-            if p_rain >= 60:
-                msg = f"{when.capitalize()} {place_text} вероятен дождь ☔ ({p_rain}%). {desc_d}. Зонт точно пригодится."
-            elif p_rain >= 30:
-                msg = f"{when.capitalize()} {place_text} возможен дождь 🌦 ({p_rain}%). {desc_d}. На всякий случай возьми зонт."
-            else:
-                msg = f"{when.capitalize()} {place_text} дождя почти не будет 🌤 ({p_rain}%). {desc_d}."
-
-        await plush_reply(update,msg)
+    if lat is None or lon is None:
+        await update.message.reply_text(
+            "Мне нужна твоя геолокация 🧸",
+            reply_markup=location_keyboard()
+        )
         return
-            
-        # 👉 ЕСЛИ ЗАВТРА
-        if "завтра" in text_l:
-            d = data["daily"]
-            tmax = d["temperature_2m_max"][1]
-            tmin = d["temperature_2m_min"][1]
-            p = d["precipitation_probability_max"][1]
-            wcode = int(d["weather_code"][1])
-            desc_d = code_to_text(wcode)
-             
-            await update.message.reply_text(
-                f"Завтра {place_text}{desc_d}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%.\n"
-                f"Я бы взял зонт… но я мишка 🧸",
-                reply_markup=dress_advice_keyboard("tomorrow")
-            )
-            return
+
+    data = await fetch_weather(lat, lon)
+
+    if data is None:
+        await plush_reply(update, "Не смог получить погоду 🧸 Попробуй позже.")
+        return
+
+    # --- дождь ---
+    if ("дожд" in text_l) or ("зонт" in text_l):
+
+        day_idx = 1 if "завтра" in text_l else 0
+        d = data["daily"]
+
+        p_rain = d["precipitation_probability_max"][day_idx]
+        desc = code_to_text(int(d["weather_code"][day_idx]))
+
+        when = "Завтра" if day_idx == 1 else "Сегодня"
+
+        if p_rain >= 60:
+            msg = f"{when} {place_text}будет дождь ☔ ({p_rain}%). {desc}."
+        elif p_rain >= 30:
+            msg = f"{when} {place_text}возможен дождь 🌦 ({p_rain}%). {desc}."
         else:
-            # 👉 ИНАЧЕ — СЕЙЧАС
-            cur = data["current"]
-            temp = cur["temperature_2m"]
-            feels = cur["apparent_temperature"]
-            wind = cur["wind_speed_10m"]
-            desc = code_to_text(int(cur["weather_code"]))
-        
-            await update.message.reply_text(
-                f"Сейчас {place_text}{temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.\n"
-                f"Погода нормальная… если ты не сахар 🍯",
-                reply_markup=dress_advice_keyboard()
-            )
-            return
-        
+            msg = f"{when} {place_text}дождя почти не будет 🌤 ({p_rain}%). {desc}."
+
+        await plush_reply(update, msg)
+        return
+
+    # --- погода завтра ---
+    if "завтра" in text_l:
+
+        d = data["daily"]
+        tmax = d["temperature_2m_max"][1]
+        tmin = d["temperature_2m_min"][1]
+        p = d["precipitation_probability_max"][1]
+        desc = code_to_text(int(d["weather_code"][1]))
+
+        await update.message.reply_text(
+            f"Завтра {place_text}{desc}: {tmin:.0f}…{tmax:.0f}°C, шанс осадков {p}%",
+            reply_markup=dress_advice_keyboard("tomorrow")
+        )
+        return
+
+    # --- погода сейчас ---
+    cur = data["current"]
+    temp = cur["temperature_2m"]
+    feels = cur["apparent_temperature"]
+    wind = cur["wind_speed_10m"]
+    desc = code_to_text(int(cur["weather_code"]))
+
     await update.message.reply_text(
-        "Я пока не понял запрос 🧸\n\n"
+        f"Сейчас {place_text}{temp:.0f}°C (ощущается {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.",
+        reply_markup=dress_advice_keyboard()
+    )
+    return
         "Попробуй так:\n"
         "• погода\n"
         "• погода завтра\n"
@@ -803,19 +768,18 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def morning_weather(context: ContextTypes.DEFAULT_TYPE):
-    with db_lock:
-        cursor.execute("""
-            SELECT user_id, lat, lon
-            FROM users
-            WHERE lat IS NOT NULL
-              AND lon IS NOT NULL
-              AND morning_enabled = 1
-        """)
+    cursor.execute("""
+        SELECT user_id, lat, lon
+        FROM users
+        WHERE lat IS NOT NULL
+        AND lon IS NOT NULL
+        AND morning_enabled = 1
+    """)
     users = cursor.fetchall()
 
     for user_id, lat, lon in users:
         try:
-            data = await fetch_weather(lat, lon, need="daily")
+            data = await fetch_weather(lat, lon)
 
             d = data["daily"]
             tmax = d["temperature_2m_max"][0]
@@ -881,6 +845,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
