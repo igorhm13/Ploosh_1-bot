@@ -2,6 +2,7 @@ import sqlite3
 import datetime
 import os
 import random
+import re
 
 from telegram.ext import (
     ApplicationBuilder,
@@ -92,10 +93,25 @@ def detect_rudeness(text: str) -> bool:
 
 
 def detect_name(text: str):
-    t = text.lower()
-    if "меня зовут" in t:
-        return text.split()[-1]
+    t = text.strip()
+    tl = t.lower()
+
+    patterns = [
+        r"^меня зовут\s+([А-Яа-яA-Za-zЁё\-]+)$",
+        r"^мо[её] имя\s+([А-Яа-яA-Za-zЁё\-]+)$",
+        r"^зови меня\s+([А-Яа-яA-Za-zЁё\-]+)$",
+        r"^я\s*[—\-]?\s*([А-Яа-яA-Za-zЁё\-]+)$",
+    ]
+
+    for pattern in patterns:
+        m = re.match(pattern, tl, flags=re.IGNORECASE)
+        if m:
+            name = m.group(1).strip(" .,!?:;\"'()[]{}")
+            if len(name) >= 2:
+                return name.capitalize()
+
     return None
+    
 def random_reply(options):
     return random.choice(options)
 
@@ -275,7 +291,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• показать погоду сейчас\n"
         "• сказать прогноз на завтра\n"
         "• подсказать, будет ли дождь ☔\n\n"
-        "Меня нужно только спросить — или нажать кнопку ниже.\n"
+        "Кстати, ты можешь сказать своё имя, и я его запомню.\n"
+        "Например:\n"
+        "• меня зовут Анна\n"
+        "• я Анна\n\n"
+        "Меня можно просто спросить — или нажать кнопку ниже."
         "Пока что других вещей я не умею делать."
     )
     await update.message.reply_text( text, reply_markup=main_menu_keyboard())
@@ -412,13 +432,19 @@ async def handle_back_weather(update: Update, context: ContextTypes.DEFAULT_TYPE
         
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
-        "ℹ️ Как спросить Плюша:\n\n"
-        "Напиши или нажми кнопку:\n"
-        "• погода / погода сейчас\n"
+        "ℹ️ Что умеет Плюш:\n\n"
+        "🌤 Погода\n"
+        "• погода\n"
         "• погода завтра\n"
-        "• будет ли дождь / нужен ли зонт\n\n"
-        "Чтобы я ответил точно, мне нужна геолокация.\n"
-        "Нажми «📍 Отправить геолокацию»."
+        "• будет ли дождь\n\n"
+        "👕 Одежда\n"
+        "• как одеться\n\n"
+        "🙂 Немного общения\n"
+        "Ты можешь сказать своё имя, и я его запомню.\n"
+        "Например:\n"
+        "• меня зовут Анна\n"
+        "• я Анна\n\n"
+        "📍 Чтобы я говорил точнее, отправь геолокацию кнопкой ниже."    
     )
     await update.message.reply_text( text, reply_markup=main_menu_keyboard())
     
@@ -854,6 +880,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
