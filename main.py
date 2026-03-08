@@ -463,6 +463,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     text = update.message.text or ""
     text_l = text.lower()
+    text_n = (
+        text_l.replace("🌡", "")
+              .replace("📅", "")
+              .replace("☔", "")
+              .replace("?", "")
+              .strip()
+    )
 
     user = get_user(user_id)
 
@@ -665,7 +672,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=dress_advice_keyboard("now")
         )
         return   
-        if ("погода" in text_l) or ("градус" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
+        if ("погода" in text_n) or ("градус" in text_n) or ("дожд" in text_n) or ("зонт" in text_n):
 
             if lat is None or lon is None:
                 await update.message.reply_text(
@@ -684,8 +691,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         place_text = f"в {place_name} " if place_name else ""
 
         # --- дождь ---
-        if ("дожд" in text_l) or ("зонт" in text_l):
-            day_idx = 1 if "завтра" in text_l else 0
+        if ("дожд" in text_n) or ("зонт" in text_n):
+            day_idx = 1 if "завтра" in text_n else 0
             d = data["daily"]
 
             p_rain = d["precipitation_probability_max"][day_idx]
@@ -848,6 +855,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
