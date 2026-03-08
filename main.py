@@ -258,7 +258,6 @@ def main_menu_keyboard():
     return ReplyKeyboardMarkup(kb, resize_keyboard=True)
 
 async def plush_reply(update: Update, text: str):
-    async def plush_reply(update: Update, text: str):
     await update.message.reply_text(text, reply_markup=main_menu_keyboard())
 
 async def plush_reply_inline(update: Update, text: str, keyboard):
@@ -849,6 +848,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
