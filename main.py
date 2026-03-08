@@ -665,14 +665,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=dress_advice_keyboard("now")
         )
         return   
-       if ("погода" in text_l) or ("градус" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
+        if ("погода" in text_l) or ("градус" in text_l) or ("дожд" in text_l) or ("зонт" in text_l):
 
-        if lat is None or lon is None:
-            await update.message.reply_text(
-                "Мне нужна твоя геолокация 🧸",
-                reply_markup=location_keyboard()
-            )
-            return
+            if lat is None or lon is None:
+                await update.message.reply_text(
+                    "Мне нужна твоя геолокация 🧸",
+                    reply_markup=location_keyboard()
+                )
+                return
 
         data = await fetch_weather(lat, lon)
 
@@ -848,6 +848,7 @@ job_queue.run_daily(morning_weather, time=datetime.time(hour=8, minute=0))
 
 print("Плюш запущен 🧸")
 app.run_polling()
+
 
 
 
