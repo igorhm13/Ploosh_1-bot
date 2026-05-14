@@ -276,11 +276,6 @@ def main_menu_keyboard():
 async def plush_reply(update: Update, text: str):
     await update.message.reply_text(text, reply_markup=main_menu_keyboard())
 
-async def plush_reply_inline(update: Update, text: str, keyboard):
-    await update.message.reply_text(
-        text,
-        reply_markup=keyboard
-    )
     
 # ---------- HANDLERS ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -618,28 +613,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    if is_cold(text):
-        await plush_reply(
-            update,
-            random_reply([
-                "Тогда лучше что-то тёплое 🧸",
-                "Я бы советовал кофту или куртку 🧸",
-                "Если холодно — не геройствуй, утеплись 🧸"
-            ])
-        )
-        return
-
-    if is_hot(text):
-        await plush_reply(
-            update,
-            random_reply([
-                "Тогда лучше что-то лёгкое 🧸",
-                "Похоже, стоит одеться попроще и полегче.",
-                "Если жарко — вода и лёгкая одежда будут хорошей идеей 🧸"
-            ])
-        )
-        return
-
     if is_walk_question(text):
         await plush_reply(
             update,
@@ -772,8 +745,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=main_menu_keyboard()
     )
 async def cmd_weather(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await plush_reply(update, "Напиши 'погода' или 'погода завтра' 🧸")
-    return
+    # Reuse handle_message logic by simulating a "погода" text
+    user_id = str(update.effective_user.id)
+    cursor.execute("SELECT lat, lon, place FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row or row["lat"] is None or row["lon"] is None:
+        await update.message.reply_text("Мне нужна твоя геолокация 🧸", reply_markup=location_keyboard())
+        return
+    lat, lon = row["lat"], row["lon"]
+    data = await fetch_weather(lat, lon)
+    if data is None:
+        await plush_reply(update, "Не смог получить погоду 🧸 Попробуй позже.")
+        return
+    place_name = await fetch_city(lat, lon)
+    place_text = f"в {place_name} " if place_name else ""
+    cur = data["current"]
+    temp = cur["temperature_2m"]
+    feels = cur["apparent_temperature"]
+    wind = cur["wind_speed_10m"]
+    desc = code_to_text(int(cur["weather_code"]))
+    await update.message.reply_text(
+        f"Сейчас {place_text}{temp:.0f}°C (ощущается как {feels:.0f}°C), {desc}, ветер {wind:.0f} м/с.",
+        reply_markup=dress_advice_keyboard()
+    )
 
 async def cmd_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text( "Ок, отправь геолокацию заново 🧸", reply_markup=location_keyboard())
